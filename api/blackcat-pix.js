@@ -3,8 +3,9 @@ import {blackcat,cpfValid,money,digits,errorResponse,saleBody,generatedEmail} fr
 export default async function handler(req,res){
  if(req.method!=='POST')return res.status(405).json({success:false,error:'Método não permitido'});
  const x=req.body||{},amount=money(x.amount),cpf=digits(x.cpf),name=String(x.nome||'').trim(),phone=digits(x.whatsapp||x.telefone||x.phone);
- if(!amount||!cpfValid(cpf)||name.length<3||phone.length<10||phone.length>13)return res.status(400).json({success:false,error:'Nome, CPF, WhatsApp ou valor inválido.'});
- const qty=Math.max(1,Math.min(150,parseInt(x.quantidade,10)||1));
+ if(!amount||amount<12.25||!cpfValid(cpf)||name.length<3||phone.length<10||phone.length>13)return res.status(400).json({success:false,error:'Nome, CPF, WhatsApp ou valor inválido.'});
+ const qty=Number(x.quantidade);
+ if(!Number.isInteger(qty)||qty<25||qty>150||Math.abs(amount-qty*0.49)>0.009)return res.status(400).json({success:false,error:'O pedido deve ter de 25 a 150 títulos, a R$ 0,49 cada (mínimo R$ 12,25).'});
  try{const d=await blackcat('/sales/create-sale','POST',saleBody({amount,name,cpf,phone,email:generatedEmail(name,cpf),description:x.descricao||`${qty} títulos`,reference:`site_${randomUUID()}`}));
  const code=d.paymentData?.copyPaste||d.paymentData?.qrCode;
  if(!d.transactionId||!code)return res.status(502).json({success:false,error:'BlackCat não retornou o código PIX ou ID da transação.'});
